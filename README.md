@@ -13,8 +13,8 @@ MVP executável em branch de desenvolvimento, com testes automatizados. Reservas
 ## Escopo da primeira versão
 
 - [ ] Cadastrar recursos
-- [ ] Reservar períodos disponíveis
-- [ ] Cancelar e consultar reservas
+- [x] Reservar períodos disponíveis
+- [x] Cancelar e consultar reservas
 
 ## Critérios para concluir a primeira versão
 
