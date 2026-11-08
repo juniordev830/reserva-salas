@@ -23,3 +23,6 @@ if (service.Listar().Count != 1)
     throw new Exception("O cancelamento deve remover apenas a reserva indicada.");
 
 Console.WriteLine("Reserva Salas: smoke tests OK");
+
+// Execute the expanded, dependency-free test suite.
+AgendaSalasTests.Executar();
