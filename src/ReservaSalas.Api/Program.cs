@@ -32,7 +32,10 @@ api.MapGet("/rooms", async (BookingDb db, CancellationToken ct) =>
 api.MapPost("/rooms", async (RoomInput input, BookingDb db, CancellationToken ct) => {
     if (string.IsNullOrWhiteSpace(input.Name) || input.Name.Trim().Length > 120 || input.Capacity is < 1 or > 10000) return Results.BadRequest(new { error = "Invalid room" });
     var room = new Room { Name = input.Name.Trim(), Capacity = input.Capacity, Active = true };
-    db.Rooms.Add(room); await db.SaveChangesAsync(ct);
+    if (await db.Rooms.AnyAsync(r => r.Name == room.Name, ct)) return Results.Conflict(new { error = "Room name already exists" });
+    db.Rooms.Add(room);
+    try { await db.SaveChangesAsync(ct); }
+    catch (DbUpdateException e) when (e.InnerException is Npgsql.PostgresException { SqlState: "23505" }) { return Results.Conflict(new { error = "Room name already exists" }); }
     return Results.Created($"/api/rooms/{room.Id}", room);
 }).RequireAuthorization("Admin");
 api.MapGet("/bookings", async (int? roomId, BookingDb db, CancellationToken ct) =>
