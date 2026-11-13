@@ -41,7 +41,7 @@ api.MapPost("/rooms", async (RoomInput input, BookingDb db, CancellationToken ct
 api.MapGet("/bookings", async (int? roomId, BookingDb db, CancellationToken ct) =>
     Results.Ok(await db.Bookings.AsNoTracking().Where(b => !roomId.HasValue || b.RoomId == roomId).OrderBy(b => b.StartsAt).Take(500).ToListAsync(ct)));
 api.MapPost("/bookings", async (BookingInput input, BookingDb db, ClaimsPrincipal user, CancellationToken ct) => {
-    if (input.RoomId <= 0 || input.StartsAt.Offset != TimeSpan.Zero || input.EndsAt.Offset != TimeSpan.Zero || input.EndsAt <= input.StartsAt)
+    if (input.RoomId <= 0 || input.StartsAt.Offset != TimeSpan.Zero || input.EndsAt.Offset != TimeSpan.Zero || input.EndsAt <= input.StartsAt || input.StartsAt == default || input.EndsAt == default)
         return Results.BadRequest(new { error = "Use UTC timestamps with end after start" });
     var actor = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub");
     if (string.IsNullOrWhiteSpace(actor)) return Results.Forbid();
