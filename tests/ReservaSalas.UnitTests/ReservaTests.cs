@@ -27,4 +27,10 @@ public class ReservaTests {
    Assert.Single(results.Where(x=>x));
    Assert.Single(s.Listar());
  }
+
+ [Fact] public void RejectsNegativeId(){var now=DateTime.UtcNow;Assert.Throws<ArgumentOutOfRangeException>(()=>Reserva.Criar(-1,"A",now,now.AddMinutes(5)));}
+ [Fact] public void TrimsResourceName(){var now=DateTime.UtcNow;Assert.Equal("Sala A",Reserva.Criar(1," Sala A ",now,now.AddMinutes(5)).Recurso);}
+ [Fact] public void RejectsSameStartTime(){var s=new ReservaService();var now=DateTime.UtcNow;s.Reservar("A",now,now.AddMinutes(30));Assert.Throws<InvalidOperationException>(()=>s.Reservar("A",now,now.AddMinutes(10)));}
+ [Fact] public void AllowsBookingAfterCancellation(){var s=new ReservaService();var now=DateTime.UtcNow;var booking=s.Reservar("A",now,now.AddMinutes(30));s.Cancelar(booking.Id);Assert.NotNull(s.Reservar("A",now,now.AddMinutes(30)));}
+ [Fact] public void RejectsDoubleCancellation(){var s=new ReservaService();var now=DateTime.UtcNow;var booking=s.Reservar("A",now,now.AddMinutes(30));s.Cancelar(booking.Id);Assert.Throws<KeyNotFoundException>(()=>s.Cancelar(booking.Id));}
 }
