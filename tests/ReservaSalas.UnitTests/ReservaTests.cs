@@ -9,4 +9,22 @@ public class ReservaTests {
  [Fact] public void AllowsDifferentRooms(){var s=new ReservaService();var now=DateTime.UtcNow;s.Reservar("A",now,now.AddHours(1));s.Reservar("B",now,now.AddHours(1));Assert.Equal(2,s.Listar().Count);}
  [Fact] public void CancelsOnlyRequestedBooking(){var s=new ReservaService();var now=DateTime.UtcNow;var a=s.Reservar("A",now,now.AddHours(1));s.Reservar("B",now,now.AddHours(1));s.Cancelar(a.Id);Assert.Single(s.Listar());}
  [Fact] public void RejectsUnknownCancellation(){var s=new ReservaService();Assert.Throws<KeyNotFoundException>(()=>s.Cancelar(99));}
+
+ [Fact] public void ReturnsSnapshotNotMutableBackingList(){
+   var s=new ReservaService();var now=DateTime.UtcNow;
+   var before=s.Listar();
+   s.Reservar("A",now,now.AddHours(1));
+   Assert.Empty(before);
+   Assert.Single(s.Listar());
+ }
+ [Fact] public async Task ConcurrentBookingsCannotOverlap(){
+   var s=new ReservaService();var now=DateTime.UtcNow;
+   var attempts=Enumerable.Range(0,20).Select(_=>Task.Run(()=>{
+     try {s.Reservar("A",now,now.AddHours(1));return true;}
+     catch(InvalidOperationException){return false;}
+   }));
+   var results=await Task.WhenAll(attempts);
+   Assert.Single(results.Where(x=>x));
+   Assert.Single(s.Listar());
+ }
 }
