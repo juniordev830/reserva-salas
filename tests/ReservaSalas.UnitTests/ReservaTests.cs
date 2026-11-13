@@ -1,0 +1,12 @@
+using ReservaSalas;
+namespace ReservaSalas.UnitTests;
+public class ReservaTests {
+ [Fact] public void RejectsEmptyResource() => Assert.Throws<ArgumentException>(() => Reserva.Criar(1," ",DateTime.UtcNow,DateTime.UtcNow.AddHours(1)));
+ [Fact] public void RejectsInvalidId() => Assert.Throws<ArgumentOutOfRangeException>(() => Reserva.Criar(0,"A",DateTime.UtcNow,DateTime.UtcNow.AddHours(1)));
+ [Fact] public void RejectsReversedPeriod(){var now=DateTime.UtcNow;Assert.Throws<ArgumentException>(()=>Reserva.Criar(1,"A",now,now));}
+ [Fact] public void RejectsOverlappingBooking(){var s=new ReservaService();var now=DateTime.UtcNow;s.Reservar("A",now,now.AddHours(2));Assert.Throws<InvalidOperationException>(()=>s.Reservar("a",now.AddHours(1),now.AddHours(3)));}
+ [Fact] public void AllowsAdjacentBooking(){var s=new ReservaService();var now=DateTime.UtcNow;s.Reservar("A",now,now.AddHours(1));s.Reservar("A",now.AddHours(1),now.AddHours(2));Assert.Equal(2,s.Listar().Count);}
+ [Fact] public void AllowsDifferentRooms(){var s=new ReservaService();var now=DateTime.UtcNow;s.Reservar("A",now,now.AddHours(1));s.Reservar("B",now,now.AddHours(1));Assert.Equal(2,s.Listar().Count);}
+ [Fact] public void CancelsOnlyRequestedBooking(){var s=new ReservaService();var now=DateTime.UtcNow;var a=s.Reservar("A",now,now.AddHours(1));s.Reservar("B",now,now.AddHours(1));s.Cancelar(a.Id);Assert.Single(s.Listar());}
+ [Fact] public void RejectsUnknownCancellation(){var s=new ReservaService();Assert.Throws<KeyNotFoundException>(()=>s.Cancelar(99));}
+}
