@@ -20,6 +20,8 @@ public sealed class BookingDb(DbContextOptions<BookingDb> options) : DbContext(o
     public DbSet<Booking> Bookings => Set<Booking>();
     protected override void OnModelCreating(ModelBuilder b) {
         b.Entity<Room>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+        b.Entity<Room>().HasIndex(x => x.Name).IsUnique();
+        b.Entity<Room>().ToTable(t => t.HasCheckConstraint("CK_Room_Capacity", "\"Capacity\" > 0"));
         b.Entity<Booking>().Property(x => x.OwnerId).HasMaxLength(200).IsRequired();
         b.Entity<Booking>().HasOne<Room>().WithMany().HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<Booking>().HasIndex(x => new { x.RoomId, x.StartsAt, x.EndsAt });
