@@ -23,14 +23,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors(o => o.AddPolicy("frontend", p => p.WithOrigins(builder.Configuration["Frontend:Origin"] ?? "http://localhost:5173").AllowAnyHeader().AllowAnyMethod()));
 var app = builder.Build();
-app.UseSwagger(); app.UseSwaggerUI();
+if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); }
 app.UseCors("frontend"); app.UseAuthentication(); app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 var api = app.MapGroup("/api").RequireAuthorization();
 api.MapGet("/rooms", async (BookingDb db, CancellationToken ct) =>
     Results.Ok(await db.Rooms.AsNoTracking().OrderBy(r => r.Name).ToListAsync(ct)));
 api.MapPost("/rooms", async (RoomInput input, BookingDb db, CancellationToken ct) => {
-    if (string.IsNullOrWhiteSpace(input.Name) || input.Capacity < 1) return Results.BadRequest(new { error = "Invalid room" });
+    if (string.IsNullOrWhiteSpace(input.Name) || input.Name.Trim().Length > 120 || input.Capacity is < 1 or > 10000) return Results.BadRequest(new { error = "Invalid room" });
     var room = new Room { Name = input.Name.Trim(), Capacity = input.Capacity, Active = true };
     db.Rooms.Add(room); await db.SaveChangesAsync(ct);
     return Results.Created($"/api/rooms/{room.Id}", room);
@@ -38,7 +38,7 @@ api.MapPost("/rooms", async (RoomInput input, BookingDb db, CancellationToken ct
 api.MapGet("/bookings", async (int? roomId, BookingDb db, CancellationToken ct) =>
     Results.Ok(await db.Bookings.AsNoTracking().Where(b => !roomId.HasValue || b.RoomId == roomId).OrderBy(b => b.StartsAt).Take(500).ToListAsync(ct)));
 api.MapPost("/bookings", async (BookingInput input, BookingDb db, ClaimsPrincipal user, CancellationToken ct) => {
-    if (input.StartsAt.Offset != TimeSpan.Zero || input.EndsAt.Offset != TimeSpan.Zero || input.EndsAt <= input.StartsAt)
+    if (input.RoomId <= 0 || input.StartsAt.Offset != TimeSpan.Zero || input.EndsAt.Offset != TimeSpan.Zero || input.EndsAt <= input.StartsAt)
         return Results.BadRequest(new { error = "Use UTC timestamps with end after start" });
     var actor = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub");
     if (string.IsNullOrWhiteSpace(actor)) return Results.Forbid();
@@ -51,7 +51,7 @@ api.MapPost("/bookings", async (BookingInput input, BookingDb db, ClaimsPrincipa
         var booking = new Booking { RoomId = input.RoomId, StartsAt = input.StartsAt, EndsAt = input.EndsAt, OwnerId = actor };
         db.Bookings.Add(booking); await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
         return Results.Created($"/api/bookings/{booking.Id}", booking);
-    } catch (Npgsql.PostgresException e) when (e.SqlState == "40001") {
+    } catch (Npgsql.PostgresException e) when (e.SqlState is "40001" or "23P01") {
         return Results.Conflict(new { error = "Concurrent booking; retry" });
     }
 });
