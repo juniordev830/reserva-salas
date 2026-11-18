@@ -72,4 +72,39 @@ if (reagendada.Id != primeira.Id || agendas.Listar()[0] != reagendada)
     throw new Exception("Reagendar deve manter o ID e aceitar horários adjacentes.");
 agendas.Reservar("Sala A", inicio, inicio.AddHours(1));
 
+var calendario = new ReservaService();
+var tarde = calendario.Reservar("Auditório", inicio.AddHours(2), inicio.AddHours(3));
+var manha = calendario.Reservar("  Auditório  ", inicio, inicio.AddHours(1));
+var outroRecurso = calendario.Reservar("Sala B", inicio.AddMinutes(30), inicio.AddHours(2));
+try
+{
+    calendario.Reservar("AUDITÓRIO", inicio.AddMinutes(15), inicio.AddMinutes(45));
+    throw new Exception("A mesma sala com acentuação Unicode equivalente deve manter a exclusividade.");
+}
+catch (InvalidOperationException)
+{
+    // comportamento esperado
+}
+if (manha.Recurso != tarde.Recurso)
+    throw new Exception("A mesma sala deve ter um nome normalizado.");
+
+var periodo = calendario.ListarNoPeriodo(inicio.AddMinutes(30), inicio.AddHours(2));
+if (!periodo.SequenceEqual(new[] { manha, outroRecurso }))
+    throw new Exception("A consulta deve retornar sobreposições ordenadas e excluir reservas adjacentes.");
+var filtradas = calendario.ListarNoPeriodo(inicio, inicio.AddHours(4), "  Auditório  ");
+if (!filtradas.SequenceEqual(new[] { manha, tarde }))
+    throw new Exception("O filtro de sala deve usar a mesma normalização da reserva.");
+calendario.Cancelar(manha.Id);
+if (filtradas.Count != 2)
+    throw new Exception("Uma consulta concluída deve conservar seus resultados.");
+try
+{
+    calendario.ListarNoPeriodo(inicio, inicio);
+    throw new Exception("Um intervalo vazio deve ser rejeitado.");
+}
+catch (ArgumentException)
+{
+    // comportamento esperado
+}
+
 Console.WriteLine("Reserva Salas: smoke tests OK");
