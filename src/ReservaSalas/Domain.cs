@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace ReservaSalas;
 
 public sealed record Reserva(int Id, string Recurso, DateTime Inicio, DateTime Fim)
@@ -7,8 +9,11 @@ public sealed record Reserva(int Id, string Recurso, DateTime Inicio, DateTime F
         if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
         if (string.IsNullOrWhiteSpace(recurso)) throw new ArgumentException("Recurso obrigatório.", nameof(recurso));
         if (fim <= inicio) throw new ArgumentException("O fim deve ser posterior ao início.", nameof(fim));
-        return new Reserva(id, recurso.Trim(), inicio, fim);
+        return new Reserva(id, NormalizarRecurso(recurso), inicio, fim);
     }
+
+    internal static string NormalizarRecurso(string recurso) =>
+        recurso.Trim().Normalize(NormalizationForm.FormC);
 
     public bool Conflita(DateTime inicio, DateTime fim) =>
         inicio < Fim && fim > Inicio;
@@ -70,6 +75,26 @@ public sealed class ReservaService
         lock (_gate)
         {
             return Array.AsReadOnly(_reservas.ToArray());
+        }
+    }
+
+    public IReadOnlyList<Reserva> ListarNoPeriodo(DateTime inicio, DateTime fim, string? recurso = null)
+    {
+        if (fim <= inicio)
+            throw new ArgumentException("O fim deve ser posterior ao início.", nameof(fim));
+        if (recurso is not null && string.IsNullOrWhiteSpace(recurso))
+            throw new ArgumentException("Recurso obrigatório.", nameof(recurso));
+
+        var filtro = recurso is null ? null : Reserva.NormalizarRecurso(recurso);
+        lock (_gate)
+        {
+            var noPeriodo = _reservas
+                .Where(reserva => reserva.Conflita(inicio, fim)
+                    && (filtro is null || reserva.Recurso.Equals(filtro, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(reserva => reserva.Inicio)
+                .ThenBy(reserva => reserva.Id)
+                .ToArray();
+            return Array.AsReadOnly(noPeriodo);
         }
     }
 }
