@@ -25,14 +25,35 @@ public sealed class ReservaService
         lock (_gate)
         {
             var proposta = Reserva.Criar(_nextId, recurso, inicio, fim);
-            if (_reservas.Any(r => r.Recurso.Equals(proposta.Recurso, StringComparison.OrdinalIgnoreCase)
-                                   && r.Conflita(proposta.Inicio, proposta.Fim)))
-                throw new InvalidOperationException("O recurso já está reservado nesse período.");
+            VerificarDisponibilidade(proposta);
 
             _reservas.Add(proposta);
             _nextId++;
             return proposta;
         }
+    }
+
+    public Reserva Reagendar(int id, string recurso, DateTime inicio, DateTime fim)
+    {
+        var proposta = Reserva.Criar(id, recurso, inicio, fim);
+        lock (_gate)
+        {
+            var index = _reservas.FindIndex(reserva => reserva.Id == id);
+            if (index < 0)
+                throw new KeyNotFoundException($"Reserva {id} não encontrada.");
+
+            VerificarDisponibilidade(proposta);
+            _reservas[index] = proposta;
+            return proposta;
+        }
+    }
+
+    private void VerificarDisponibilidade(Reserva proposta)
+    {
+        if (_reservas.Any(reserva => reserva.Id != proposta.Id
+                && reserva.Recurso.Equals(proposta.Recurso, StringComparison.OrdinalIgnoreCase)
+                && reserva.Conflita(proposta.Inicio, proposta.Fim)))
+            throw new InvalidOperationException("O recurso já está reservado nesse período.");
     }
 
     public void Cancelar(int id)
