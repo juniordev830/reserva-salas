@@ -16,26 +16,60 @@ public sealed record Reserva(int Id, string Recurso, DateTime Inicio, DateTime F
 
 public sealed class ReservaService
 {
+    private readonly object _gate = new();
     private readonly List<Reserva> _reservas = [];
     private int _nextId = 1;
 
     public Reserva Reservar(string recurso, DateTime inicio, DateTime fim)
     {
-        var proposta = Reserva.Criar(_nextId, recurso, inicio, fim);
-        if (_reservas.Any(r => r.Recurso.Equals(proposta.Recurso, StringComparison.OrdinalIgnoreCase)
-                               && r.Conflita(proposta.Inicio, proposta.Fim)))
-            throw new InvalidOperationException("O recurso já está reservado nesse período.");
+        lock (_gate)
+        {
+            var proposta = Reserva.Criar(_nextId, recurso, inicio, fim);
+            VerificarDisponibilidade(proposta);
 
-        _reservas.Add(proposta);
-        _nextId++;
-        return proposta;
+            _reservas.Add(proposta);
+            _nextId++;
+            return proposta;
+        }
+    }
+
+    public Reserva Reagendar(int id, string recurso, DateTime inicio, DateTime fim)
+    {
+        var proposta = Reserva.Criar(id, recurso, inicio, fim);
+        lock (_gate)
+        {
+            var index = _reservas.FindIndex(reserva => reserva.Id == id);
+            if (index < 0)
+                throw new KeyNotFoundException($"Reserva {id} não encontrada.");
+
+            VerificarDisponibilidade(proposta);
+            _reservas[index] = proposta;
+            return proposta;
+        }
+    }
+
+    private void VerificarDisponibilidade(Reserva proposta)
+    {
+        if (_reservas.Any(reserva => reserva.Id != proposta.Id
+                && reserva.Recurso.Equals(proposta.Recurso, StringComparison.OrdinalIgnoreCase)
+                && reserva.Conflita(proposta.Inicio, proposta.Fim)))
+            throw new InvalidOperationException("O recurso já está reservado nesse período.");
     }
 
     public void Cancelar(int id)
     {
-        if (!_reservas.RemoveAll(r => r.Id == id).Equals(1))
-            throw new KeyNotFoundException($"Reserva {id} não encontrada.");
+        lock (_gate)
+        {
+            if (_reservas.RemoveAll(r => r.Id == id) != 1)
+                throw new KeyNotFoundException($"Reserva {id} não encontrada.");
+        }
     }
 
-    public IReadOnlyList<Reserva> Listar() => _reservas.AsReadOnly();
+    public IReadOnlyList<Reserva> Listar()
+    {
+        lock (_gate)
+        {
+            return Array.AsReadOnly(_reservas.ToArray());
+        }
+    }
 }

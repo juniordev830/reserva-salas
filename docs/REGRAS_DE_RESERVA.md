@@ -11,6 +11,7 @@ Este documento descreve comportamentos esperados para a evolução do MVP. Não 
 5. Reservas de recursos diferentes podem ocorrer no mesmo horário.
 6. Uma reserva cancelada deixa de bloquear o recurso; o histórico do cancelamento deve ser preservado quando houver persistência.
 7. Operações inválidas devem retornar um erro claro, sem alterar reservas existentes.
+8. Reagendar mantém o identificador da reserva. A sala e o horário mudam quando o novo período está disponível.
 
 ## Definição de sobreposição
 
