@@ -107,4 +107,25 @@ catch (ArgumentException)
     // comportamento esperado
 }
 
+var mapa = new ReservaService();
+mapa.Reservar("Auditório", inicio.AddMinutes(-30), inicio.AddMinutes(30));
+mapa.Reservar("Auditório", inicio.AddHours(1), inicio.AddHours(2));
+mapa.Reservar("Auditório", inicio.AddHours(2), inicio.AddHours(2.5));
+mapa.Reservar("Auditório", inicio.AddHours(4), inicio.AddHours(5));
+mapa.Reservar("Sala B", inicio.AddHours(3), inicio.AddHours(4));
+var janelas = mapa.ListarDisponibilidade("  AUDITÓRIO ", inicio, inicio.AddHours(4.5), TimeSpan.FromHours(1));
+if (!janelas.SequenceEqual(new[] { new IntervaloLivre(inicio.AddHours(2.5), inicio.AddHours(4)) }))
+    throw new Exception("A disponibilidade deve respeitar o recurso, as bordas e a duração mínima.");
+var livre = mapa.ListarDisponibilidade("Sala sem reservas", inicio, inicio.AddHours(1), TimeSpan.FromHours(1));
+if (!livre.SequenceEqual(new[] { new IntervaloLivre(inicio, inicio.AddHours(1)) }))
+    throw new Exception("Um recurso sem reservas deve poder usar a janela inteira.");
+try
+{
+    mapa.ListarDisponibilidade("Auditório", inicio, inicio.AddHours(1), TimeSpan.Zero);
+    throw new Exception("A duração mínima deve ser positiva.");
+}
+catch (ArgumentOutOfRangeException)
+{
+    // comportamento esperado
+}
 Console.WriteLine("Reserva Salas: smoke tests OK");
