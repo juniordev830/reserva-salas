@@ -2,6 +2,8 @@ using System.Text;
 
 namespace ReservaSalas;
 
+public sealed record IntervaloLivre(DateTime Inicio, DateTime Fim);
+
 public sealed record Reserva(int Id, string Recurso, DateTime Inicio, DateTime Fim)
 {
     public static Reserva Criar(int id, string recurso, DateTime inicio, DateTime fim)
@@ -96,5 +98,28 @@ public sealed class ReservaService
                 .ToArray();
             return Array.AsReadOnly(noPeriodo);
         }
+    }
+
+    public IReadOnlyList<IntervaloLivre> ListarDisponibilidade(
+        string recurso, DateTime inicio, DateTime fim, TimeSpan duracaoMinima)
+    {
+        if (string.IsNullOrWhiteSpace(recurso))
+            throw new ArgumentException("Recurso obrigatório.", nameof(recurso));
+        if (duracaoMinima <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(duracaoMinima));
+
+        var ocupadas = ListarNoPeriodo(inicio, fim, recurso);
+        var livres = new List<IntervaloLivre>();
+        var cursor = inicio;
+        foreach (var ocupada in ocupadas)
+        {
+            if (ocupada.Inicio - cursor >= duracaoMinima)
+                livres.Add(new IntervaloLivre(cursor, ocupada.Inicio));
+            if (ocupada.Fim > cursor)
+                cursor = ocupada.Fim;
+        }
+        if (fim - cursor >= duracaoMinima)
+            livres.Add(new IntervaloLivre(cursor, fim));
+        return livres.AsReadOnly();
     }
 }

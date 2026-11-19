@@ -15,6 +15,7 @@ MVP executável em branch de desenvolvimento, com testes automatizados. Reservas
 - [ ] Cadastrar recursos
 - [x] Reservar períodos disponíveis
 - [x] Cancelar e consultar reservas
+- [x] Consultar as janelas livres de um recurso a partir de uma duração mínima
 
 ## Critérios para concluir a primeira versão
 
