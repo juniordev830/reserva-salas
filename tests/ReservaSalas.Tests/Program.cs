@@ -128,4 +128,5 @@ catch (ArgumentOutOfRangeException)
 {
     // comportamento esperado
 }
+AgendaSalasTests.Executar();
 Console.WriteLine("Reserva Salas: smoke tests OK");
